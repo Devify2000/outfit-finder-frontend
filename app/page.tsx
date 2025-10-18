@@ -1,21 +1,32 @@
 "use client";
 import { useState } from "react";
-import { Search } from "lucide-react";
 import { FileUpload } from "../components/ui/file-upload";
 import { BackgroundGradientAnimation } from "../components/ui/background-gradient-animation";
 import { cn } from "@/lib/utils";
 
+// Types for product data
+interface VisualMatch {
+  title: string;
+  link: string;
+  source: string;
+  thumbnail: string;
+  price: {
+    value: string;
+    extracted_value: string;
+    currency: string;
+  } | null;
+}
+
 export default function Page() {
   const [files, setFiles] = useState(false);
+  const [products, setProducts] = useState<VisualMatch[]>([]);
 
-  const mockProducts = Array(8).fill({
-    name: "Premium Product",
-    price: 29.99,
-    image: "https://bluorng.com/cdn/shop/files/dp8.jpg?v=1699165083&width=1946",
-    rating: 4.5,
-  });
+  const handleProductsFound = (foundProducts: VisualMatch[]) => {
+    setProducts(foundProducts);
+  };
 
   console.log("files- ", files);
+  console.log("products- ", products);
 
   return (
     <BackgroundGradientAnimation
@@ -46,18 +57,10 @@ export default function Page() {
         >
           {/* Search + Filters - Only show when files is true */}
           {files && (
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
-              <div className="flex items-center gap-3 border border-gray-300 dark:border-gray-600 px-4 py-3 rounded-xl w-full sm:w-80 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all">
-                <Search
-                  size={18}
-                  className="text-gray-500 dark:text-gray-400"
-                />
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  className="outline-none flex-1 text-sm bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-                />
-              </div>
+            <div className="flex flex-row justify-between mb-6 gap-4">
+              <h1 className="text-4xl font-extrabold font-stretch-50% bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-sky-500">
+                HOPPLE
+              </h1>
 
               <div className="flex flex-wrap justify-end gap-2 text-sm">
                 <button
@@ -66,15 +69,6 @@ export default function Page() {
                 >
                   Upload New Image
                 </button>
-                {/* <button className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-xl font-medium hover:bg-white dark:hover:bg-gray-700 transition-colors backdrop-blur-sm">
-                  Price ↑
-                </button>
-                <button className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-xl font-medium hover:bg-white dark:hover:bg-gray-700 transition-colors backdrop-blur-sm">
-                  Price ↓
-                </button>
-                <button className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-xl font-medium hover:bg-white dark:hover:bg-gray-700 transition-colors backdrop-blur-sm">
-                  Rating
-                </button> */}
               </div>
             </div>
           )}
@@ -82,48 +76,76 @@ export default function Page() {
           {/* Content when no files are uploaded - Full viewport file upload */}
           {!files && (
             <div className="w-full h-full">
-              <FileUpload setGotFiles={setFiles} />
+              <FileUpload
+                setGotFiles={setFiles}
+                onProductsFound={handleProductsFound}
+              />
             </div>
           )}
 
           {/* Content when files are uploaded */}
           {files && (
             <>
-              {/* File Upload - Normal size when files exist */}
-              {/* <div className="w-full mx-auto border-2 border-dashed border-white/30 bg-white/10 backdrop-blur-sm rounded-2xl mb-8 hover:border-white/50 transition-colors">
-                <FileUpload setGotFiles={setFiles} />
-              </div> */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 pb-12">
+                {products.length > 0 ? (
+                  products.map((product, index) => (
+                    <div
+                      key={index}
+                      className="group bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-3 hover:shadow-2xl hover:border-white/20 transition-all duration-300 hover:-translate-y-1"
+                    >
+                      {/* Image */}
+                      <div className="relative aspect-square rounded-xl overflow-hidden mb-3">
+                        <img
+                          src={product.thumbnail}
+                          alt={product.title}
+                          className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src =
+                              "https://via.placeholder.com/300x300?text=No+Image";
+                          }}
+                        />
+                        {/* Subtle gradient overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-70"></div>
 
-              {/* Product Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 pb-8">
-                {mockProducts.map((product, index) => (
-                  <div
-                    key={index}
-                    className="group bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-4 hover:shadow-xl hover:border-white/30 transition-all duration-300"
-                  >
-                    <div className="bg-white/20 aspect-square rounded-lg flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="object-fill rounded-lg"
-                      />
-                    </div>
-                    <h3 className="font-semibold text-white text-sm mb-1 line-clamp-2">
-                      {product.name} {index + 1}
-                    </h3>
-                    <div className="flex items-center justify-between">
-                      <p className="text-white font-bold text-sm">
-                        ${product.price}
-                      </p>
-                      <div className="flex items-center gap-1">
-                        <span className="text-yellow-300">★</span>
-                        <span className="text-xs text-white/80">
-                          {product.rating}
-                        </span>
+                        {/* Price Tag */}
+                        <div className="absolute bottom-2 left-2 bg-green-500/70 text-white text-xs font-semibold px-2 py-1 rounded-md shadow-md">
+                          {product.price
+                            ? `${product.price.currency}${product.price.extracted_value}`
+                            : "N/A"}
+                        </div>
+                      </div>
+
+                      {/* Product Info */}
+                      <div className="flex flex-col gap-1.5">
+                        <h3 className="font-semibold text-gray-100 text-sm leading-tight line-clamp-2 group-hover:text-white">
+                          {product.title}
+                        </h3>
+
+                        <p className="text-xs text-gray-400">
+                          {product.source}
+                        </p>
+
+                        <div className="mt-2 flex justify-between items-center">
+                          <a
+                            href={product.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-purple-500/70 text-white px-2 py-1 rounded-md shadow-md hover:text-purple-100 text-xs font-medium transition-colors"
+                          >
+                            View Product
+                          </a>
+                        </div>
                       </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-8">
+                    <p className="text-white/70">
+                      No products found. Try uploading an image!
+                    </p>
                   </div>
-                ))}
+                )}
               </div>
             </>
           )}

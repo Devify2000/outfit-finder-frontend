@@ -1,199 +1,249 @@
 import { cn } from "@/lib/utils";
 import React, { useRef, useState } from "react";
 import { motion } from "motion/react";
-import { IconUpload } from "@tabler/icons-react";
+import { IconUpload, IconPhoto } from "@tabler/icons-react";
 import { useDropzone } from "react-dropzone";
 
-const mainVariant = {
-  initial: {
-    x: 0,
-    y: 0,
-  },
-  animate: {
-    x: 20,
-    y: -20,
-    opacity: 0.9,
-  },
-};
+// API configuration
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
-const secondaryVariant = {
-  initial: {
-    opacity: 0,
-  },
-  animate: {
-    opacity: 1,
-  },
-};
+// Types for API responses
+interface UploadResponse {
+  success: boolean;
+  imageUrl: string;
+  base64Image: string;
+}
+
+interface VisualMatch {
+  title: string;
+  link: string;
+  source: string;
+  thumbnail: string;
+  price: {
+    value: string;
+    extracted_value: string;
+    currency: string;
+  } | null;
+}
+
+interface LensResponse {
+  success: boolean;
+  imageUrl: string;
+  total_results: number;
+  visual_matches: VisualMatch[];
+}
 
 export const FileUpload = ({
   onChange,
   setGotFiles,
+  onProductsFound,
 }: {
   onChange?: (files: File[]) => void;
   setGotFiles: (gotFiles: boolean) => void;
+  onProductsFound?: (products: VisualMatch[]) => void;
 }) => {
   const [files, setFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (newFiles: File[]) => {
-    setFiles((prevFiles) => [...prevFiles, ...newFiles]);
-    onChange && onChange(newFiles);
+  // API functions
+  const uploadImage = async (file: File): Promise<UploadResponse> => {
+    const formData = new FormData();
+    formData.append("image", file);
 
-    setGotFiles(true);
-    console.log(setGotFiles);
+    const response = await fetch(`${BASE_URL}/upload`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Upload failed: ${response.statusText}`);
+    }
+
+    return response.json();
   };
 
-  const handleClick = () => {
-    fileInputRef.current?.click();
+  const searchProducts = async (imageUrl: string): Promise<LensResponse> => {
+    const response = await fetch(`${BASE_URL}/lens`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        imageUrl,
+        country: "in",
+        hl: "en",
+        type: "products",
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Search failed: ${response.statusText}`);
+    }
+
+    return response.json();
   };
+
+  const handleFileChange = async (newFiles: File[]) => {
+    if (newFiles.length === 0) return;
+
+    setIsUploading(true);
+    setUploadError(null);
+
+    try {
+      // Upload the first file
+      const uploadResult = await uploadImage(newFiles[0]);
+
+      if (uploadResult.success) {
+        // Search for products using the uploaded image
+        const searchResult = await searchProducts(uploadResult.imageUrl);
+
+        if (searchResult.success && onProductsFound) {
+          onProductsFound(searchResult.visual_matches);
+        }
+      }
+
+      setFiles((prev) => [...prev, ...newFiles]);
+      onChange && onChange(newFiles);
+      setGotFiles(true);
+    } catch (error) {
+      console.error("Upload or search failed:", error);
+      setUploadError(error instanceof Error ? error.message : "Upload failed");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleClick = () => fileInputRef.current?.click();
 
   const { getRootProps, isDragActive } = useDropzone({
     multiple: false,
     noClick: true,
     onDrop: handleFileChange,
     onDropRejected: (error) => {
-      console.log(error);
+      console.error("Drop rejected:", error);
     },
   });
 
   return (
-    <div className="w-full h-full" {...getRootProps()}>
+    <div
+      className="relative flex flex-col items-center justify-between min-h-[100vh] w-full p-6 text-center"
+      {...getRootProps()}
+    >
+      {/* Background gradient */}
+      <div className="absolute inset-0 z-0" />
+
+      {/* Brand heading */}
+      <div className="z-10 mb-8">
+        <motion.h1
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7 }}
+          className="text-8xl font-extrabold font-stretch-50% bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-sky-500"
+        >
+          HOPPLE
+        </motion.h1>
+        <p className="text-purple-200/70 text-2xl font-medium">
+          Find That Fit in minutes
+        </p>
+      </div>
+
+      {/* Upload area */}
       <motion.div
         onClick={handleClick}
-        whileHover="animate"
-        className="p-10 group/file block rounded-lg cursor-pointer w-full h-full relative overflow-hidden"
+        whileHover={{ scale: 1.03 }}
+        whileTap={{ scale: 0.98 }}
+        className={cn(
+          "relative z-10 rounded-3xl border-2 border-dashed h-[60vh]",
+          isDragActive
+            ? "border-sky-400 bg-sky-50/50 dark:bg-sky-900/20"
+            : "border-neutral-300 dark:border-neutral-700 bg-black/30 dark:bg-neutral-800/40",
+          "backdrop-blur-md shadow-lg p-10 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 w-full max-w-lg"
+        )}
       >
         <input
           ref={fileInputRef}
-          id="file-upload-handle"
           type="file"
           onChange={(e) => handleFileChange(Array.from(e.target.files || []))}
           className="hidden"
         />
-        <div className="absolute inset-0 [mask-image:radial-gradient(ellipse_at_center,white,transparent)]">
-          <GridPattern />
-        </div>
-        <div className="flex flex-col items-center justify-center h-full w-full">
-          <p className="relative z-20 font-sans font-bold text-neutral-700 dark:text-neutral-100 text-base">
-            Upload Image
-          </p>
-          <p className="relative z-20 font-sans font-normal text-black text-base mt-2">
-            Drag or drop your image here or click to upload
-          </p>
-          <div className="relative w-full mt-10 max-w-xl mx-auto">
-            {files.length > 0 &&
-              files.map((file, idx) => (
-                <motion.div
-                  key={"file" + idx}
-                  layoutId={idx === 0 ? "file-upload" : "file-upload-" + idx}
-                  className={cn(
-                    "relative overflow-hidden z-40 bg-purple-900/40 dark:bg-neutral-800 flex flex-col items-start justify-start md:h-24 p-4 mt-4 w-full mx-auto rounded-md",
-                    "shadow-sm dark:shadow-neutral-700/30"
-                  )}
-                >
-                  <div className="flex justify-between w-full items-center gap-4">
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      layout
-                      className="text-base text-neutral-700 dark:text-neutral-100 truncate max-w-xs"
-                    >
-                      {file.name}
-                    </motion.p>
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      layout
-                      className="rounded-lg px-2 py-1 w-fit shrink-0 text-sm text-neutral-600 dark:text-neutral-200 bg-gray-100 dark:bg-neutral-700 shadow-input"
-                    >
-                      {(file.size / (1024 * 1024)).toFixed(2)} MB
-                    </motion.p>
-                  </div>
 
-                  <div className="flex text-sm md:flex-row flex-col items-start md:items-center w-full mt-2 justify-between text-neutral-600 dark:text-neutral-300">
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      layout
-                      className="px-1 py-0.5 rounded-md bg-gray-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-200"
-                    >
-                      {file.type}
-                    </motion.p>
-
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      layout
-                    >
-                      modified{" "}
-                      {new Date(file.lastModified).toLocaleDateString()}
-                    </motion.p>
-                  </div>
-                </motion.div>
-              ))}
-            {!files.length && (
-              <motion.div
-                layoutId="file-upload"
-                variants={mainVariant}
-                transition={{
-                  type: "spring",
-                  stiffness: 300,
-                  damping: 20,
-                }}
-                className={cn(
-                  "relative group-hover/file:shadow-2xl z-40 bg-purple-400/40 dark:bg-neutral-800 flex items-center justify-center h-32 mt-4 w-full max-w-[8rem] mx-auto rounded-md",
-                  "shadow-[0px_10px_50px_rgba(0,0,0,0.1)] dark:shadow-[0px_10px_50px_rgba(0,0,0,0.3)]",
-                  "border border-none dark:border-neutral-700"
-                )}
-              >
-                {isDragActive ? (
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-neutral-600 dark:text-neutral-300 flex flex-col items-center"
-                  >
-                    Drop it
-                    <IconUpload className="h-4 w-4 text-neutral-600 dark:text-neutral-300" />
-                  </motion.p>
-                ) : (
-                  <IconUpload className="h-4 w-4 text-neutral-600 dark:text-neutral-300" />
-                )}
-              </motion.div>
-            )}
-
-            {!files.length && (
-              <motion.div
-                variants={secondaryVariant}
-                className="absolute opacity-0 border border-dashed border-sky-400 dark:border-sky-500 inset-0 z-30 bg-transparent flex items-center justify-center h-32 mt-4 w-full max-w-[8rem] mx-auto rounded-md"
-              ></motion.div>
-            )}
+        {isUploading ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col items-center space-y-2"
+          >
+            <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
+            <p className="font-semibold text-purple-300">
+              Finding your perfect match...
+            </p>
+          </motion.div>
+        ) : uploadError ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col items-center space-y-2"
+          >
+            <div className="w-10 h-10 text-red-500">⚠️</div>
+            <p className="font-semibold text-red-300">Upload failed</p>
+            <p className="text-sm text-red-200">{uploadError}</p>
+          </motion.div>
+        ) : isDragActive ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col items-center space-y-2"
+          >
+            <IconUpload className="w-10 h-10 text-sky-500 animate-bounce" />
+            <p className="font-semibold text-sky-600 dark:text-sky-300">
+              Drop it here!
+            </p>
+          </motion.div>
+        ) : (
+          <div className="flex flex-col items-center space-y-3">
+            <motion.div
+              animate={{ y: [0, -6, 0] }}
+              transition={{ repeat: Infinity, duration: 2 }}
+            >
+              <IconPhoto className="w-12 h-12 text-purple-500 dark:text-purple-300" />
+            </motion.div>
+            <p className="text-lg font-medium text-neutral-300 dark:text-neutral-200">
+              Drag & drop or click to upload
+            </p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              (Supported: JPG, PNG, SVG)
+            </p>
           </div>
-        </div>
+        )}
       </motion.div>
+
+      {/* Uploaded files list */}
+      <div className="w-full max-w-lg mt-8 space-y-3 z-10">
+        {files.map((file, idx) => (
+          <motion.div
+            key={idx}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.1 }}
+            className="flex justify-between items-center bg-white/40 dark:bg-neutral-800/50 backdrop-blur-md rounded-xl p-4 shadow-sm border border-neutral-200 dark:border-neutral-700"
+          >
+            <div className="flex flex-col text-left">
+              <p className="text-neutral-800 dark:text-neutral-100 font-medium truncate">
+                {file.name}
+              </p>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                {(file.size / (1024 * 1024)).toFixed(2)} MB •{" "}
+                {file.type || "Unknown"}
+              </p>
+            </div>
+            <p className="text-sm text-neutral-400 dark:text-neutral-500">
+              {new Date(file.lastModified).toLocaleDateString()}
+            </p>
+          </motion.div>
+        ))}
+      </div>
     </div>
   );
 };
-
-export function GridPattern() {
-  const columns = 41;
-  const rows = 11;
-  return (
-    <div className="flex bg-gray-100 dark:bg-neutral-900 shrink-0 flex-wrap justify-center items-center gap-x-px gap-y-px scale-105 w-full h-full">
-      {Array.from({ length: rows }).map((_, row) =>
-        Array.from({ length: columns }).map((_, col) => {
-          const index = row * columns + col;
-          return (
-            <div
-              key={`${col}-${row}`}
-              className={`w-10 h-10 flex shrink-0 rounded-[2px] ${
-                index % 2 === 0
-                  ? "bg-gray-50 dark:bg-neutral-800"
-                  : "bg-gray-50 dark:bg-neutral-800 shadow-[0px_0px_1px_3px_rgba(255,255,255,1)_inset] dark:shadow-[0px_0px_1px_3px_rgba(55,65,81,0.5)_inset]"
-              }`}
-            />
-          );
-        })
-      )}
-    </div>
-  );
-}
