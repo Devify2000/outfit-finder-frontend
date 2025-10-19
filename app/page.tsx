@@ -3,6 +3,7 @@ import { useState } from "react";
 import { FileUpload } from "../components/ui/file-upload";
 import { BackgroundGradientAnimation } from "../components/ui/background-gradient-animation";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 // Types for product data
 interface VisualMatch {
@@ -95,7 +96,7 @@ export default function Page() {
                     >
                       {/* Image */}
                       <div className="relative aspect-square rounded-xl overflow-hidden mb-3">
-                        <img
+                        <Image
                           src={product.thumbnail}
                           alt={product.title}
                           className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
