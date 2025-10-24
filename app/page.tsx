@@ -97,6 +97,8 @@ export default function Page() {
                       {/* Image */}
                       <div className="relative aspect-square rounded-xl overflow-hidden mb-3">
                         <Image
+                          width={300}
+                          height={300}
                           src={product.thumbnail}
                           alt={product.title}
                           className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
