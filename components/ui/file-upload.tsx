@@ -138,7 +138,7 @@ export const FileUpload = ({
           HOPPLE
         </motion.h1>
         <p className="text-purple-200/70 text-2xl font-medium">
-          Find That Fit in minutes
+          Find That Fit in seconds
         </p>
       </div>
 
