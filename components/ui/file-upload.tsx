@@ -138,7 +138,7 @@ export const FileUpload = ({
           HOPPLE
         </motion.h1>
         <p className="text-purple-200/70 text-2xl font-medium">
-          Find That Fit in seconds
+          Find That Outfit in seconds
         </p>
       </div>
 
@@ -223,7 +223,7 @@ export const FileUpload = ({
                   <IconPhoto className="w-12 h-12 text-purple-500 dark:text-purple-300" />
                 </motion.div>
                 <p className="text-lg font-medium text-neutral-300 dark:text-neutral-200">
-                  Drag & drop or click to upload
+                  Please upload the picture of the outfit you wanna find here
                 </p>
                 <p className="text-sm text-neutral-500 dark:text-neutral-400">
                   (Supported: JPG, PNG, SVG)
